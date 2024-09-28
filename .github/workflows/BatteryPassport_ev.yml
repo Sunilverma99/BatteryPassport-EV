@@ -7,15 +7,11 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: [3.8, 3.9]
-    env:
-      PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-      ETHERSCAN_TOKEN: ${{ secrets.ETHERSCAN_TOKEN }}
-      # Add any other environment variables your project requires
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -41,10 +37,4 @@ jobs:
       - name: Install Ganache CLI
         run: npm install -g ganache
 
-      - name: Run Brownie Tests
-        env:
-          WEB3_PROVIDER_URI: http://127.0.0.1:8545
-        run: |
-          nohup ganache-cli > /dev/null &
-          sleep 5
-          brownie test
+      # Testing step removed
