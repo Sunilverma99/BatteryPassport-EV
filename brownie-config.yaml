@@ -2,19 +2,17 @@
 
 dependencies:
   - OpenZeppelin/openzeppelin-contracts@4.8.0
-  - smartcontractkit/chainlink-brownie-contracts@1.1.1
+  - smartcontractkit/chainlink-brownie-contracts@1.2.1
 
 compiler:
   solc:
-    version: 0.8.17  # Ensure this matches your Solidity pragma version or use the latest stable version
+    version: 0.8.17  # Ensure this matches your Solidity pragma version
     optimizer:
       enabled: true
       runs: 200
-    settings:
-      viaIR: true
     remappings:
       - '@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.8.0'
-      - '@chainlink=smartcontractkit/chainlink-brownie-contracts@1.1.1'
+      - '@chainlink=smartcontractkit/chainlink-brownie-contracts@1.2.1'
 
 networks:
   development:
