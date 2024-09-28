@@ -1,4 +1,4 @@
-name: BatteryPassport_ev
+name: Brownie CI
 
 on:
   push:
@@ -12,6 +12,10 @@ jobs:
     strategy:
       matrix:
         python-version: [3.8, 3.9]
+    env:
+      PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+      ETHERSCAN_TOKEN: ${{ secrets.ETHERSCAN_TOKEN }}
+      # Add any other environment variables your project requires
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -24,12 +28,16 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install brownie
+          pip install eth-brownie
           pip install -r requirements.txt
 
-      - name: Install Ganache
-        run: |
-          npm install -g ganache
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Install Ganache CLI
+        run: npm install -g ganache
 
       - name: Run Brownie Tests
         env:
