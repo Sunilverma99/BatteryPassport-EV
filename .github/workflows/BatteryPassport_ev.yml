@@ -1,4 +1,4 @@
-name: Brownie CI
+name: Batterypassport_ev
 
 on:
   push:
@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          clean: true  # Ensures the working directory is clean before checkout
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
