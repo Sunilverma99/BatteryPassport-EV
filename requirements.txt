@@ -1,0 +1,9 @@
+eth-brownie==1.19.0
+pytest==7.1.2
+pytest-xdist==2.5.0
+pytest-cov==3.0.0
+web3==5.31.1
+ipfshttpclient==0.8.0a2
+black==22.3.0
+flake8==4.0.1
+mypy==0.950
