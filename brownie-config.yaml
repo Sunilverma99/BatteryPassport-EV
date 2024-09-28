@@ -1,0 +1,27 @@
+# brownie-config.yaml
+
+dependencies:
+  - OpenZeppelin/openzeppelin-contracts@4.8.0
+  - smartcontractkit/chainlink-brownie-contracts@1.1.1
+
+compiler:
+  solc:
+    version: 0.8.17  # Ensure this matches your Solidity pragma version or use the latest stable version
+    optimizer:
+      enabled: true
+      runs: 200
+    settings:
+      viaIR: true
+    remappings:
+      - '@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.8.0'
+      - '@chainlink=smartcontractkit/chainlink-brownie-contracts@1.1.1'
+
+networks:
+  development:
+    host: http://127.0.0.1
+    port: 8545
+    network_id: 1337
+    eth_gbp_price_feed: "0x0000000000000000000000000000000000000000"
+    verify: False
+
+dotenv: .env  # Include this line if you're using environment variables
