@@ -1,0 +1,40 @@
+name: BatteryPassport_ev
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install brownie
+          pip install -r requirements.txt
+
+      - name: Install Ganache
+        run: |
+          npm install -g ganache
+
+      - name: Run Brownie Tests
+        env:
+          WEB3_PROVIDER_URI: http://127.0.0.1:8545
+        run: |
+          nohup ganache-cli > /dev/null &
+          sleep 5
+          brownie test
