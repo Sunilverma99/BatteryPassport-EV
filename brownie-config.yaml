@@ -1,8 +1,6 @@
-# brownie-config.yaml
-
 dependencies:
-  - OpenZeppelin/openzeppelin-contracts@4.8.0
-  - smartcontractkit/chainlink-brownie-contracts@1.1.1
+  - OpenZeppelin/openzeppelin-contracts@4.8.0  # or the latest version
+  - smartcontractkit/chainlink-brownie-contracts@1.1.1  # or the latest version
 
 compiler:
   solc:
@@ -12,15 +10,14 @@ compiler:
       runs: 200
     remappings:
       - '@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.8.0'
-      - '@chainlink=smartcontractkit/chainlink-brownie-contracts@1.1.1'
+      - '@chainlink=smartcontractkit/chainlink-brownie-contracts@1.1.1'  # Update if using a different version
 
 networks:
   development:
     host: http://127.0.0.1
     port: 8545
     network_id: 1337
-    eth_gbp_price_feed: "0x0000000000000000000000000000000000000000"
+    eth_gbp_price_feed: "0x0000000000000000000000000000000000000000"  # Update with actual price feed address
     verify: False
 
-
-#dotenv: .env  # Include this line if you're using environment variables
+#dotenv: .env  # Uncomment if you're using environment variables

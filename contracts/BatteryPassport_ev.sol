@@ -7,6 +7,8 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+
+
 /**
  * @title EVBatteryPassport
  * @dev A smart contract for managing EV battery passports in compliance with EU regulations.
@@ -79,6 +81,8 @@ contract EVBatteryPassport is ERC721, AccessControl, ReentrancyGuard {
     event RecyclerAssigned(uint256 indexed tokenId, address indexed recycler, uint256 timestamp);
     event DepositRefunded(address indexed manufacturer, uint256 amount, uint256 timestamp);
     event DepositLocked(address indexed manufacturer, uint256 amount, uint256 timestamp);
+    event ManufacturerAdded(address indexed manufacturer, uint256 timestamp);
+
 
     // Enumerations for fixed options
     enum BatteryType { LithiumIon, LeadAcid, NickelMetalHydride, Other }
@@ -310,8 +314,13 @@ contract EVBatteryPassport is ERC721, AccessControl, ReentrancyGuard {
      * @notice Adds a manufacturer to the system.
      * @param manufacturer The address of the manufacturer.
      */
+    //function addManufacturer(address manufacturer) external onlyGovernment {
+      //  grantRole(MANUFACTURER_ROLE, manufacturer);
+   // }
+   
     function addManufacturer(address manufacturer) external onlyGovernment {
         grantRole(MANUFACTURER_ROLE, manufacturer);
+        emit ManufacturerAdded(manufacturer, block.timestamp);
     }
 
     /**
