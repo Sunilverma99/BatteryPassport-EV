@@ -38,3 +38,7 @@ jobs:
         run: npm install -g ganache
 
       # Testing step removed
+      # Add this step to run tests
+      - name: Run Tests
+        run: |
+          brownie test  # Adjust if you need specific test directories or configurations
