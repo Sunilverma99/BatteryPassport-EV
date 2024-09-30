@@ -15,9 +15,10 @@ compiler:
 networks:
   development:
     host: http://127.0.0.1
-    port: 8545
-    network_id: 1337
-    eth_gbp_price_feed: "0x0000000000000000000000000000000000000000"  # Update with actual price feed address
+    port: 7545  # Update to 7545 if using the default Ganache settings
+    network_id: 5777  # Update to 5777 if using the default Ganache settings
+    eth_gbp_price_feed: "0x0000000000000000000000000000000000000000"  # Update with actual price feed address when available
     verify: False
+
 
 #dotenv: .env  # Uncomment if you're using environment variables

@@ -6,7 +6,7 @@ from brownie import (
     MockV3Aggregator,
     Contract,
 )
-from web3 import Web3
+
 
 # Align DECIMALS and STARTING_PRICE with deploy.py
 DECIMALS = 18
