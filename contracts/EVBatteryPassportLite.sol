@@ -76,6 +76,7 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
         _;
     }
 
+
     modifier hasMinimumDeposit() {
         uint256 requiredDeposit = calculateMinDeposit();
         uint256 providedDeposit = manufacturerDeposits[msg.sender];
@@ -133,11 +134,26 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
         uint256 manufacturerDeposit = manufacturerDeposits[manufacturer];
         require(manufacturerDeposit >= penaltyAmount, "Penalty exceeds deposit");
         manufacturerDeposits[manufacturer] -= penaltyAmount;
-        emit PenaltyApplied(manufacturer, penaltyAmount, block.timestamp);
-    }
+                emit PenaltyApplied(manufacturer, penaltyAmount, block.timestamp);
+
+            }
+
+    function mintBatteryToken(uint256 tokenId) internal {
+    _safeMint(msg.sender, tokenId);
+}
 
    
-    function setBatteryData(uint256 tokenId, string memory batteryModel, string memory manufacturerLocation, string memory batteryType, string memory productName) external onlyRole(MANUFACTURER_ROLE) {
+    function setBatteryData(
+    uint256 tokenId, 
+    string memory batteryModel, 
+    string memory manufacturerLocation, 
+    string memory batteryType, 
+    string memory productName
+) external onlyRole(MANUFACTURER_ROLE) {
+    // Check if the token already exists
+    require(!_exists(tokenId), "ERC721: token already minted");
+
+    // Set the battery data
     batteryData[tokenId] = BatteryData({
         identification: Identification({
             batteryModel: batteryModel,
@@ -148,7 +164,22 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
         }),
         productName: productName
     });
+
+    // Mint the token to the manufacturer
+    _safeMint(msg.sender, tokenId);
+
+    // Emit an event for battery data setting (optional, but recommended for transparency)
+    emit BatteryDataSet(tokenId, msg.sender, batteryModel, batteryType, productName);
 }
+
+// Event declaration (add this outside the function, with your other event declarations)
+event BatteryDataSet(
+    uint256 indexed tokenId,
+    address indexed manufacturer,
+    string batteryModel,
+    string batteryType,
+    string productName
+);
 
     /**
      * @notice Views battery details after consent is given.
