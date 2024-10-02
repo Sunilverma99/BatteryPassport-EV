@@ -187,13 +187,17 @@ def test_role_revocation(ev_battery_passport, government_account, manufacturer_a
     
 def test_erc721_functionality(ev_battery_passport, government_account, manufacturer_account, consumer_account):
     """Test basic ERC721 functionality and battery data setting."""
+    
     # Add manufacturer and set up deposit
+    print("Adding manufacturer and setting up deposit...")
     ev_battery_passport.addManufacturer(manufacturer_account, {'from': government_account})
     ev_battery_passport.deposit({'from': manufacturer_account, 'value': Wei("1 ether")})
     ev_battery_passport.lockDeposit({'from': manufacturer_account})
+    print(f"Manufacturer {manufacturer_account} added and deposit locked.")
 
     # Set battery data and mint token
     token_id = 1
+    print(f"Setting battery data for token {token_id}...")
     tx = ev_battery_passport.setBatteryData(
         token_id,
         "Model Y",
@@ -202,9 +206,11 @@ def test_erc721_functionality(ev_battery_passport, government_account, manufactu
         "Hybrid Battery",
         {'from': manufacturer_account}
     )
+    print(f"Battery data set for token {token_id} and token minted.")
 
     # Test minting (setBatteryData implicitly mints a token)
     assert ev_battery_passport.ownerOf(token_id) == manufacturer_account
+    print(f"Token {token_id} is owned by {manufacturer_account}.")
 
     # Verify BatteryDataSet event
     assert 'BatteryDataSet' in tx.events
@@ -213,12 +219,16 @@ def test_erc721_functionality(ev_battery_passport, government_account, manufactu
     assert tx.events['BatteryDataSet']['batteryModel'] == "Model Y"
     assert tx.events['BatteryDataSet']['batteryType'] == "NiMH"
     assert tx.events['BatteryDataSet']['productName'] == "Hybrid Battery"
+    print(f"Verified BatteryDataSet event for token {token_id}.")
 
     # Test transferring
+    print(f"Transferring token {token_id} from {manufacturer_account} to {consumer_account}...")
     ev_battery_passport.transferFrom(manufacturer_account, consumer_account, token_id, {'from': manufacturer_account})
     assert ev_battery_passport.ownerOf(token_id) == consumer_account
+    print(f"Token {token_id} successfully transferred to {consumer_account}.")
 
     # Verify battery data
+    print("Granting consumer role and verifying battery details...")
     ev_battery_passport.grantRole(ev_battery_passport.CONSUMER_ROLE(), consumer_account, {'from': government_account})
     batteryType, batteryModel, productName, manufacturingSite, supplyChainInfo, isRecycled, returnedToManufacturer = ev_battery_passport.viewBatteryDetails(token_id, {'from': consumer_account})
     assert batteryType == "NiMH"
@@ -228,9 +238,11 @@ def test_erc721_functionality(ev_battery_passport, government_account, manufactu
     assert supplyChainInfo == ""
     assert isRecycled == False
     assert returnedToManufacturer == False
+    print(f"Verified battery details for token {token_id}: {batteryModel}, {batteryType}, {productName}, {manufacturingSite}.")
 
     # Test minting a token with a different ID (should succeed)
     new_token_id = 2  # Different token ID
+    print(f"Minting new token with ID {new_token_id}...")
     tx = ev_battery_passport.setBatteryData(
         new_token_id,
         "Model Z",
@@ -240,8 +252,10 @@ def test_erc721_functionality(ev_battery_passport, government_account, manufactu
         {'from': manufacturer_account}
     )
     assert ev_battery_passport.ownerOf(new_token_id) == manufacturer_account
+    print(f"Token {new_token_id} minted and owned by {manufacturer_account}.")
 
     # Verify new token data
+    print(f"Verifying battery details for token {new_token_id}...")
     batteryType, batteryModel, productName, manufacturingSite, supplyChainInfo, isRecycled, returnedToManufacturer = ev_battery_passport.viewBatteryDetails(new_token_id, {'from': consumer_account})
     assert batteryType == "Li-ion"
     assert batteryModel == "Model Z"
@@ -250,6 +264,8 @@ def test_erc721_functionality(ev_battery_passport, government_account, manufactu
     assert supplyChainInfo == ""
     assert isRecycled == False
     assert returnedToManufacturer == False
+    print(f"Verified battery details for token {new_token_id}: {batteryModel}, {batteryType}, {productName}, {manufacturingSite}.")
+
     
 # Role Management Tests
 def test_role_revocation(ev_battery_passport, government_account, manufacturer_account):

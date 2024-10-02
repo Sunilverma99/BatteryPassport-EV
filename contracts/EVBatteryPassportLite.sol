@@ -175,7 +175,7 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
         emit BatteryRecycled(tokenId, msg.sender);
     }
 
-function markBatteryReturnedToManufacturer(uint256 tokenId, address manufacturer) external onlyRole(RECYCLER_ROLE) {
+    function markBatteryReturnedToManufacturer(uint256 tokenId, address manufacturer) external onlyRole(RECYCLER_ROLE) {
     require(_exists(tokenId), "ERC721: token does not exist");
     require(hasRole(MANUFACTURER_ROLE, manufacturer), "Invalid manufacturer address");
     require(batteryData[tokenId].isRecycled, "Battery must be recycled first");
@@ -241,7 +241,6 @@ function markBatteryReturnedToManufacturer(uint256 tokenId, address manufacturer
 function viewBatteryDetails(uint256 tokenId)
     external
     view
-    onlyRole(CONSUMER_ROLE)
     returns (
         string memory batteryType,
         string memory batteryModel,
@@ -252,6 +251,14 @@ function viewBatteryDetails(uint256 tokenId)
         bool returnedToManufacturer
     )
 {
+    require(
+        hasRole(CONSUMER_ROLE, msg.sender) ||
+        hasRole(RECYCLER_ROLE, msg.sender) ||
+        hasRole(SUPPLIER_ROLE, msg.sender) ||
+        hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
+        "Caller must have appropriate role to view battery details"
+    );
+
     BatteryData storage data = batteryData[tokenId];
 
     batteryType = data.technicalSpecifications.batteryType;

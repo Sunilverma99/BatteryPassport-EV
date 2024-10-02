@@ -26,9 +26,12 @@ def test_view_battery_details(ev_battery_passport, government_account, manufactu
 
     ev_battery_passport.grantRole(ev_battery_passport.CONSUMER_ROLE(), consumer_account, {'from': government_account})
 
-    batteryType, batteryModel, productName, manufacturingSite = ev_battery_passport.viewBatteryDetails(battery_id, {'from': consumer_account})
+    batteryType, batteryModel, productName, manufacturingSite, supplyChainInfo, isRecycled, returnedToManufacturer = ev_battery_passport.viewBatteryDetails(battery_id, {'from': consumer_account})
 
     assert batteryType == 'Lithium-Ion'
     assert batteryModel == 'Model X'
     assert productName == 'Electric Battery'
     assert manufacturingSite == 'Location A'
+    assert supplyChainInfo == ''
+    assert isRecycled == False
+    assert returnedToManufacturer == False
