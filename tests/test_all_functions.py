@@ -382,3 +382,62 @@ def test_unauthorized_supplier_update(ev_battery_passport, government_account, m
     assert "AccessControl" in str(excinfo.value)
     assert "missing role" in str(excinfo.value)
     print("Unauthorized update attempt correctly reverted.")
+    
+
+# Consent Management Tests
+
+def test_consent_management(
+    ev_battery_passport,
+    government_account,
+    manufacturer_account,
+    consumer_account,
+    non_government_account,
+    supplier_account
+):
+    # Set up: Add manufacturer and mint a battery
+    ev_battery_passport.addManufacturer(manufacturer_account, {'from': government_account})
+    ev_battery_passport.deposit({'from': manufacturer_account, 'value': Wei("1 ether")})
+    ev_battery_passport.lockDeposit({'from': manufacturer_account})
+    
+    battery_id = 1
+    ev_battery_passport.setBatteryData(
+        battery_id,
+        "Model X",
+        "Location A",
+        "Lithium-Ion",
+        "Electric Battery",
+        {'from': manufacturer_account}
+    )
+
+    # Grant consumer role
+    ev_battery_passport.grantRole(ev_battery_passport.CONSUMER_ROLE(), consumer_account, {'from': government_account})
+
+    # Test initial consent status
+    assert ev_battery_passport.checkConsent(battery_id, supplier_account) == False, "Initial consent should be false"
+
+    # Test granting consent
+    ev_battery_passport.grantConsent(battery_id, supplier_account, {'from': consumer_account})
+    assert ev_battery_passport.checkConsent(battery_id, supplier_account) == True, "Consent should be granted"
+
+    # Test revoking consent
+    ev_battery_passport.revokeConsent(battery_id, supplier_account, {'from': consumer_account})
+    assert ev_battery_passport.checkConsent(battery_id, supplier_account) == False, "Consent should be revoked"
+
+    # Test granting consent for non-existent token
+    with reverts("ERC721: token does not exist"):
+        ev_battery_passport.grantConsent.call(999, supplier_account, {'from': consumer_account})
+
+    # Test granting consent from non-consumer account
+    consumer_role = ev_battery_passport.CONSUMER_ROLE()
+    with reverts(f"AccessControl: account {non_government_account.address.lower()} is missing role {consumer_role}"):
+        ev_battery_passport.grantConsent.call(battery_id, supplier_account, {'from': non_government_account})
+
+    # Test revoking consent for non-existent token
+    with reverts("ERC721: token does not exist"):
+        ev_battery_passport.revokeConsent.call(999, supplier_account, {'from': consumer_account})
+
+    # Test revoking consent from non-consumer account
+    with reverts(f"AccessControl: account {non_government_account.address.lower()} is missing role {consumer_role}"):
+        ev_battery_passport.revokeConsent.call(battery_id, supplier_account, {'from': non_government_account})
+
+    print("All consent management tests passed successfully!")

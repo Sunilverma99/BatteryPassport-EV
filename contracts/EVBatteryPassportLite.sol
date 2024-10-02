@@ -28,6 +28,11 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
     // Mapping to store manufacturer deposits
     mapping(address => uint256) public manufacturerDeposits;
 
+
+    //Struct to store consent
+    struct Consent {
+    mapping(address => bool) consentStatus; // Tracks consent for each address
+    }
     // Struct to store battery data
     struct Identification {
         string batteryModel;
@@ -50,6 +55,10 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
     // Mapping from tokenId to BatteryData
     mapping(uint256 => BatteryData) public batteryData;
 
+    // Mapping to store consent approvals (tokenId => Consent struct)
+    mapping(uint256 => Consent) private batteryConsent;
+
+
     // Events
     event DepositLocked(address indexed manufacturer, uint256 amount, uint256 timestamp);
     event ManufacturerAdded(address indexed manufacturer, uint256 timestamp);
@@ -59,6 +68,8 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
     event SupplyChainInfoUpdated(uint256 indexed tokenId, address indexed supplier, string supplyChainData);
     event BatteryRecycled(uint256 indexed tokenId, address indexed recycler);
     event BatteryReturnedToManufacturer(uint256 indexed tokenId, address indexed recycler, address indexed manufacturer);
+    event ConsentGranted(uint256 indexed tokenId, address indexed role);
+    event ConsentRevoked(uint256 indexed tokenId, address indexed role);
 
     // Custom errors for gas efficiency
     error OnlyGovernment();
@@ -125,6 +136,24 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
         uint256 ethPriceInGBP = getLatestPrice();
         require(ethPriceInGBP > 0, "Invalid price feed data");
         minDepositInWei = (MIN_DEPOSIT_GBP * 1e18) / ethPriceInGBP;
+    }
+
+    //Consent Management Functions 
+
+    function checkConsent(uint256 tokenId, address role) public view returns (bool) {
+        return batteryConsent[tokenId].consentStatus[role];
+}
+    function grantConsent(uint256 tokenId, address role) external onlyRole(CONSUMER_ROLE) {
+        require(_exists(tokenId), "ERC721: token does not exist");
+        batteryConsent[tokenId].consentStatus[role] = true;
+        emit ConsentGranted(tokenId, role);
+    }
+
+    
+    function revokeConsent(uint256 tokenId, address role) external onlyRole(CONSUMER_ROLE) {
+        require(_exists(tokenId), "ERC721: token does not exist");
+        batteryConsent[tokenId].consentStatus[role] = false;
+        emit ConsentRevoked(tokenId, role);
     }
 
     // Role Management Functions
@@ -238,37 +267,38 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
     emit BatteryDataSet(tokenId, msg.sender, batteryModel, batteryType, productName);
 }
 
-function viewBatteryDetails(uint256 tokenId)
-    external
-    view
-    returns (
-        string memory batteryType,
-        string memory batteryModel,
-        string memory productName,
-        string memory manufacturingSite,
-        string memory supplyChainInfo,
-        bool isRecycled,
-        bool returnedToManufacturer
-    )
-{
-    require(
-        hasRole(CONSUMER_ROLE, msg.sender) ||
-        hasRole(RECYCLER_ROLE, msg.sender) ||
-        hasRole(SUPPLIER_ROLE, msg.sender) ||
-        hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
-        "Caller must have appropriate role to view battery details"
-    );
+        function viewBatteryDetails(uint256 tokenId)
+            external
+            view
+            returns (
+                string memory batteryType,
+                string memory batteryModel,
+                string memory productName,
+                string memory manufacturingSite,
+                string memory supplyChainInfo,
+                bool isRecycled,
+                bool returnedToManufacturer
+            )
+        {
+            require(
+                hasRole(CONSUMER_ROLE, msg.sender) ||
+                hasRole(RECYCLER_ROLE, msg.sender) ||
+                hasRole(SUPPLIER_ROLE, msg.sender) ||
+                hasRole(DEFAULT_ADMIN_ROLE, msg.sender) ||
+                batteryConsent[tokenId].consentStatus[msg.sender],
+                "Caller does not have permission to view battery details"
+            );
 
-    BatteryData storage data = batteryData[tokenId];
+            BatteryData storage data = batteryData[tokenId];
 
-    batteryType = data.technicalSpecifications.batteryType;
-    batteryModel = data.identification.batteryModel;
-    productName = data.productName;
-    manufacturingSite = data.identification.manufacturerLocation;
-    supplyChainInfo = data.supplyChainInfo;
-    isRecycled = data.isRecycled;
-    returnedToManufacturer = data.returnedToManufacturer;
-}
+            batteryType = data.technicalSpecifications.batteryType;
+            batteryModel = data.identification.batteryModel;
+            productName = data.productName;
+            manufacturingSite = data.identification.manufacturerLocation;
+            supplyChainInfo = data.supplyChainInfo;
+            isRecycled = data.isRecycled;
+            returnedToManufacturer = data.returnedToManufacturer;
+        }
 
     // Override Functions
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, AccessControl) returns (bool) {
