@@ -1,5 +1,6 @@
 import pytest
-from brownie import MockPriceFeed, EVBatteryPassportLite, accounts, exceptions, Wei
+import brownie
+from brownie import MockPriceFeed, EVBatteryPassportLite, accounts, exceptions, Wei, reverts
 from web3 import Web3
 from web3.exceptions import BadResponseFormat
 
@@ -23,6 +24,14 @@ def consumer_account():
 @pytest.fixture
 def non_government_account():
     return accounts[3]
+
+@pytest.fixture
+def supplier_account():
+    return accounts[4]
+
+@pytest.fixture
+def recycler_account():
+    return accounts[5]
 
 @pytest.fixture
 def ev_battery_passport(mock_price_feed, government_account):
@@ -151,12 +160,15 @@ def test_view_battery_details(ev_battery_passport, government_account, manufactu
 
     ev_battery_passport.grantRole(ev_battery_passport.CONSUMER_ROLE(), consumer_account, {'from': government_account})
 
-    batteryType, batteryModel, productName, manufacturingSite = ev_battery_passport.viewBatteryDetails(battery_id, {'from': consumer_account})
+    batteryType, batteryModel, productName, manufacturingSite, supplyChainInfo, isRecycled, returnedToManufacturer = ev_battery_passport.viewBatteryDetails(battery_id, {'from': consumer_account})
 
     assert batteryType == 'Lithium-Ion'
     assert batteryModel == 'Model X'
     assert productName == 'Electric Battery'
     assert manufacturingSite == 'Location A'
+    assert supplyChainInfo == ''
+    assert isRecycled == False
+    assert returnedToManufacturer == False
 
 # Role Management Tests
 def test_role_revocation(ev_battery_passport, government_account, manufacturer_account):
@@ -208,11 +220,14 @@ def test_erc721_functionality(ev_battery_passport, government_account, manufactu
 
     # Verify battery data
     ev_battery_passport.grantRole(ev_battery_passport.CONSUMER_ROLE(), consumer_account, {'from': government_account})
-    batteryType, batteryModel, productName, manufacturingSite = ev_battery_passport.viewBatteryDetails(token_id, {'from': consumer_account})
+    batteryType, batteryModel, productName, manufacturingSite, supplyChainInfo, isRecycled, returnedToManufacturer = ev_battery_passport.viewBatteryDetails(token_id, {'from': consumer_account})
     assert batteryType == "NiMH"
     assert batteryModel == "Model Y"
     assert productName == "Hybrid Battery"
     assert manufacturingSite == "Location B"
+    assert supplyChainInfo == ""
+    assert isRecycled == False
+    assert returnedToManufacturer == False
 
     # Test minting a token with a different ID (should succeed)
     new_token_id = 2  # Different token ID
@@ -225,3 +240,129 @@ def test_erc721_functionality(ev_battery_passport, government_account, manufactu
         {'from': manufacturer_account}
     )
     assert ev_battery_passport.ownerOf(new_token_id) == manufacturer_account
+
+    # Verify new token data
+    batteryType, batteryModel, productName, manufacturingSite, supplyChainInfo, isRecycled, returnedToManufacturer = ev_battery_passport.viewBatteryDetails(new_token_id, {'from': consumer_account})
+    assert batteryType == "Li-ion"
+    assert batteryModel == "Model Z"
+    assert productName == "Electric Car Battery"
+    assert manufacturingSite == "Location C"
+    assert supplyChainInfo == ""
+    assert isRecycled == False
+    assert returnedToManufacturer == False
+    
+# Role Management Tests
+def test_role_revocation(ev_battery_passport, government_account, manufacturer_account):
+    """Test revoking a manufacturer's role and ensuring they can't perform actions."""
+    ev_battery_passport.addManufacturer(manufacturer_account, {'from': government_account})
+    assert ev_battery_passport.hasRole(ev_battery_passport.MANUFACTURER_ROLE(), manufacturer_account)
+    
+    ev_battery_passport.revokeRole(ev_battery_passport.MANUFACTURER_ROLE(), manufacturer_account, {'from': government_account})
+    assert not ev_battery_passport.hasRole(ev_battery_passport.MANUFACTURER_ROLE(), manufacturer_account)
+    
+    # Ensure an error is raised when trying to set battery data after revocation
+    with pytest.raises((exceptions.VirtualMachineError, BadResponseFormat)):
+        ev_battery_passport.setBatteryData(1, "Model X", "Location A", "Lithium-Ion", "Electric Battery", {'from': manufacturer_account})
+
+# Access Control Tests
+def test_add_supplier(ev_battery_passport, government_account, supplier_account):
+    """Test adding a supplier role."""
+    ev_battery_passport.grantRole(ev_battery_passport.SUPPLIER_ROLE(), supplier_account, {'from': government_account})
+    assert ev_battery_passport.hasRole(ev_battery_passport.SUPPLIER_ROLE(), supplier_account)
+    print(f"Supplier role granted to {supplier_account}.")
+
+def test_remove_supplier(ev_battery_passport, government_account, supplier_account):
+    """Test removing a supplier role."""
+    ev_battery_passport.grantRole(ev_battery_passport.SUPPLIER_ROLE(), supplier_account, {'from': government_account})
+    ev_battery_passport.revokeRole(ev_battery_passport.SUPPLIER_ROLE(), supplier_account, {'from': government_account})
+    assert not ev_battery_passport.hasRole(ev_battery_passport.SUPPLIER_ROLE(), supplier_account)
+    print(f"Supplier role revoked from {supplier_account}.")
+
+def test_add_recycler(ev_battery_passport, government_account, recycler_account):
+    """Test adding a recycler role."""
+    ev_battery_passport.grantRole(ev_battery_passport.RECYCLER_ROLE(), recycler_account, {'from': government_account})
+    assert ev_battery_passport.hasRole(ev_battery_passport.RECYCLER_ROLE(), recycler_account)
+    print(f"Recycler role granted to {recycler_account}.")
+
+def test_remove_recycler(ev_battery_passport, government_account, recycler_account):
+    """Test removing a recycler role."""
+    ev_battery_passport.grantRole(ev_battery_passport.RECYCLER_ROLE(), recycler_account, {'from': government_account})
+    ev_battery_passport.revokeRole(ev_battery_passport.RECYCLER_ROLE(), recycler_account, {'from': government_account})
+    assert not ev_battery_passport.hasRole(ev_battery_passport.RECYCLER_ROLE(), recycler_account)
+    print(f"Recycler role revoked from {recycler_account}.")
+
+def test_add_consumer(ev_battery_passport, government_account, consumer_account):
+    """Test adding a consumer role."""
+    ev_battery_passport.grantRole(ev_battery_passport.CONSUMER_ROLE(), consumer_account, {'from': government_account})
+    assert ev_battery_passport.hasRole(ev_battery_passport.CONSUMER_ROLE(), consumer_account)
+    print(f"Consumer role granted to {consumer_account}.")
+
+def test_remove_consumer(ev_battery_passport, government_account, consumer_account):
+    """Test removing a consumer role."""
+    ev_battery_passport.grantRole(ev_battery_passport.CONSUMER_ROLE(), consumer_account, {'from': government_account})
+    ev_battery_passport.revokeRole(ev_battery_passport.CONSUMER_ROLE(), consumer_account, {'from': government_account})
+    assert not ev_battery_passport.hasRole(ev_battery_passport.CONSUMER_ROLE(), consumer_account)
+    print(f"Consumer role revoked from {consumer_account}.")
+
+# Supplier Functionality Tests
+def test_update_supply_chain_info(ev_battery_passport, government_account, manufacturer_account, supplier_account):
+    """Test updating supply chain information by a supplier."""
+    # Setup
+    token_id = 1
+    ev_battery_passport.addManufacturer(manufacturer_account, {'from': government_account})
+    ev_battery_passport.deposit({'from': manufacturer_account, 'value': Wei("1 ether")})
+    ev_battery_passport.lockDeposit({'from': manufacturer_account})
+    ev_battery_passport.setBatteryData(
+        token_id,
+        "Model X",
+        "Location A",
+        "Lithium-Ion",
+        "Electric Battery",
+        {'from': manufacturer_account}
+    )
+
+    # Add supplier role
+    ev_battery_passport.grantRole(ev_battery_passport.SUPPLIER_ROLE(), supplier_account, {'from': government_account})
+    
+    # Grant CONSUMER_ROLE to supplier for viewing details (this is a workaround for testing)
+    ev_battery_passport.grantRole(ev_battery_passport.CONSUMER_ROLE(), supplier_account, {'from': government_account})
+
+    # Update supply chain info
+    supply_chain_data = "Shipped from Factory A to Distribution Center B"
+    tx = ev_battery_passport.updateSupplyChainInfo(token_id, supply_chain_data, {'from': supplier_account})
+
+    # Verify event
+    assert 'SupplyChainInfoUpdated' in tx.events
+    assert tx.events['SupplyChainInfoUpdated']['tokenId'] == token_id
+    assert tx.events['SupplyChainInfoUpdated']['supplier'] == supplier_account
+    assert tx.events['SupplyChainInfoUpdated']['supplyChainData'] == supply_chain_data
+
+    # Verify updated data
+    _, _, _, _, updated_supply_chain_info, _, _ = ev_battery_passport.viewBatteryDetails(token_id, {'from': supplier_account})
+    assert updated_supply_chain_info == supply_chain_data
+    print(f"Supply chain info updated successfully for token {token_id}.")
+    
+def test_unauthorized_supplier_update(ev_battery_passport, government_account, manufacturer_account, consumer_account):
+    """Test that unauthorized accounts cannot update supply chain info."""
+    # Setup
+    token_id = 1
+    ev_battery_passport.addManufacturer(manufacturer_account, {'from': government_account})
+    ev_battery_passport.deposit({'from': manufacturer_account, 'value': Wei("1 ether")})
+    ev_battery_passport.lockDeposit({'from': manufacturer_account})
+    ev_battery_passport.setBatteryData(
+        token_id,
+        "Model X",
+        "Location A",
+        "Lithium-Ion",
+        "Electric Battery",
+        {'from': manufacturer_account}
+    )
+
+    # Attempt to update supply chain info with unauthorized account
+    with pytest.raises(Exception) as excinfo:
+        ev_battery_passport.updateSupplyChainInfo(token_id, "Unauthorized update", {'from': consumer_account})
+    
+    # Check if the error message contains the expected content
+    assert "AccessControl" in str(excinfo.value)
+    assert "missing role" in str(excinfo.value)
+    print("Unauthorized update attempt correctly reverted.")

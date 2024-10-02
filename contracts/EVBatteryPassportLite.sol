@@ -42,6 +42,9 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
         Identification identification;
         TechnicalSpecifications technicalSpecifications;
         string productName;
+        string supplyChainInfo;
+        bool isRecycled;
+        bool returnedToManufacturer;
     }
 
     // Mapping from tokenId to BatteryData
@@ -52,6 +55,10 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
     event ManufacturerAdded(address indexed manufacturer, uint256 timestamp);
     event ManufacturerRemoved(address indexed manufacturer, uint256 timestamp);
     event PenaltyApplied(address indexed manufacturer, uint256 amount, uint256 timestamp);
+    event BatteryDataSet(uint256 indexed tokenId, address indexed manufacturer, string batteryModel, string batteryType, string productName);
+    event SupplyChainInfoUpdated(uint256 indexed tokenId, address indexed supplier, string supplyChainData);
+    event BatteryRecycled(uint256 indexed tokenId, address indexed recycler);
+    event BatteryReturnedToManufacturer(uint256 indexed tokenId, address indexed recycler, address indexed manufacturer);
 
     // Custom errors for gas efficiency
     error OnlyGovernment();
@@ -76,6 +83,27 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
         _;
     }
 
+    modifier onlyManufacturer() {
+        require(hasRole(MANUFACTURER_ROLE, msg.sender), "Caller is not a manufacturer");
+        _;
+    }
+
+    modifier onlySupplier() {
+        require(hasRole(SUPPLIER_ROLE, msg.sender), "Caller is not a supplier");
+        _;
+    }
+
+    modifier onlyRecycler() {
+    require(hasRole(RECYCLER_ROLE, msg.sender), "Caller is not a recycler");
+    _;
+    }
+
+    modifier onlyConsumer() {
+        require(hasRole(CONSUMER_ROLE, msg.sender), "Caller is not a consumer");
+        _;
+    }
+
+
 
     modifier hasMinimumDeposit() {
         uint256 requiredDeposit = calculateMinDeposit();
@@ -84,65 +112,104 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
         _;
     }
 
-    /**
-     * @notice Fetches the latest GBP/ETH price from Chainlink.
-     * @return price The latest price.
-     */
+    //Functions 
+
+    // Price and Deposit Functions
     function getLatestPrice() public view returns (uint256 price) {
         (, int256 answer, , , ) = priceFeed.latestRoundData();
         require(answer > 0, "Invalid price feed data");
         price = uint256(answer);
     }
 
-    /**
-     * @notice Calculates the required deposit in Ether based on a £10 minimum.
-     * @return minDepositInWei The minimum deposit required in wei.
-     */
     function calculateMinDeposit() public view returns (uint256 minDepositInWei) {
         uint256 ethPriceInGBP = getLatestPrice();
         require(ethPriceInGBP > 0, "Invalid price feed data");
         minDepositInWei = (MIN_DEPOSIT_GBP * 1e18) / ethPriceInGBP;
     }
 
-    /**
-     * @notice Adds a manufacturer to the system.
-     * @param manufacturer The address of the manufacturer.
-     */
+    // Role Management Functions
     function addManufacturer(address manufacturer) external onlyGovernment {
         grantRole(MANUFACTURER_ROLE, manufacturer);
         emit ManufacturerAdded(manufacturer, block.timestamp);
     }
 
-    /**
-     * @notice Locks the manufacturer's deposit.
-     */
-    function lockDeposit() external hasMinimumDeposit nonReentrant {
-        uint256 lockedDeposit = manufacturerDeposits[msg.sender]; // Renamed variable to avoid conflict
-        manufacturerDeposits[msg.sender] = 0; // Lock the deposit by setting it to 0
-        emit DepositLocked(msg.sender, lockedDeposit, block.timestamp);
+    function removeManufacturer(address manufacturer) external onlyGovernment {
+        revokeRole(MANUFACTURER_ROLE, manufacturer);
     }
 
-    /**
-     * @notice Manufacturer can deposit Ether to the contract.
-     */
+    function addSupplier(address _account) external onlyRole(GOVERNMENT_ROLE) {
+        grantRole(SUPPLIER_ROLE, _account);
+    }
+
+    function removeSupplier(address supplier) external onlyGovernment {
+        revokeRole(SUPPLIER_ROLE, supplier);
+    }
+
+    function addRecycler(address _account) external onlyRole(GOVERNMENT_ROLE) {
+        grantRole(RECYCLER_ROLE, _account);
+    }
+
+    function removeRecycler(address recycler) external onlyGovernment {
+        revokeRole(RECYCLER_ROLE, recycler);
+    }
+
+    function grantConsumerRole(address _account) external onlyRole(GOVERNMENT_ROLE) {
+        grantRole(CONSUMER_ROLE, _account);
+    }
+
+    function removeConsumer(address consumer) external onlyGovernment {
+        revokeRole(CONSUMER_ROLE, consumer);
+    }
+
+    // Supplier Functionality
+    function updateSupplyChainInfo(uint256 tokenId, string memory supplyChainData) external onlyRole(SUPPLIER_ROLE) {
+        require(_exists(tokenId), "ERC721: token does not exist");
+        batteryData[tokenId].supplyChainInfo = supplyChainData;
+        emit SupplyChainInfoUpdated(tokenId, msg.sender, supplyChainData);
+    }
+
+    // Recycler Functionality
+    function markBatteryRecycled(uint256 tokenId) external onlyRole(RECYCLER_ROLE) {
+        require(_exists(tokenId), "ERC721: token does not exist");
+        batteryData[tokenId].isRecycled = true;
+        emit BatteryRecycled(tokenId, msg.sender);
+    }
+
+function markBatteryReturnedToManufacturer(uint256 tokenId, address manufacturer) external onlyRole(RECYCLER_ROLE) {
+    require(_exists(tokenId), "ERC721: token does not exist");
+    require(hasRole(MANUFACTURER_ROLE, manufacturer), "Invalid manufacturer address");
+    require(batteryData[tokenId].isRecycled, "Battery must be recycled first");
+    
+    batteryData[tokenId].returnedToManufacturer = true;
+    emit BatteryReturnedToManufacturer(tokenId, msg.sender, manufacturer);
+    
+    // Transfer the token back to the manufacturer
+    _transfer(ownerOf(tokenId), manufacturer, tokenId);
+}
+
+    // Deposit and Penalty Functions
     function deposit() external payable nonReentrant {
         manufacturerDeposits[msg.sender] += msg.value;
     }
 
+    function lockDeposit() external hasMinimumDeposit nonReentrant {
+        uint256 lockedDeposit = manufacturerDeposits[msg.sender];
+        manufacturerDeposits[msg.sender] = 0;
+        emit DepositLocked(msg.sender, lockedDeposit, block.timestamp);
+    }
 
     function penalizeNonCompliance(address manufacturer, uint256 penaltyAmount) external onlyGovernment nonReentrant {
         uint256 manufacturerDeposit = manufacturerDeposits[manufacturer];
         require(manufacturerDeposit >= penaltyAmount, "Penalty exceeds deposit");
         manufacturerDeposits[manufacturer] -= penaltyAmount;
-                emit PenaltyApplied(manufacturer, penaltyAmount, block.timestamp);
+        emit PenaltyApplied(manufacturer, penaltyAmount, block.timestamp);
+    }
 
-            }
-
+    // Battery Token Functions
     function mintBatteryToken(uint256 tokenId) internal {
-    _safeMint(msg.sender, tokenId);
-}
+        _safeMint(msg.sender, tokenId);
+    }
 
-   
     function setBatteryData(
     uint256 tokenId, 
     string memory batteryModel, 
@@ -150,10 +217,8 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
     string memory batteryType, 
     string memory productName
 ) external onlyRole(MANUFACTURER_ROLE) {
-    // Check if the token already exists
     require(!_exists(tokenId), "ERC721: token already minted");
 
-    // Set the battery data
     batteryData[tokenId] = BatteryData({
         identification: Identification({
             batteryModel: batteryModel,
@@ -162,68 +227,44 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
         technicalSpecifications: TechnicalSpecifications({
             batteryType: batteryType
         }),
-        productName: productName
+        productName: productName,
+        supplyChainInfo: "",
+        isRecycled: false,
+        returnedToManufacturer: false
     });
 
-    // Mint the token to the manufacturer
     _safeMint(msg.sender, tokenId);
 
-    // Emit an event for battery data setting (optional, but recommended for transparency)
     emit BatteryDataSet(tokenId, msg.sender, batteryModel, batteryType, productName);
 }
 
-// Event declaration (add this outside the function, with your other event declarations)
-event BatteryDataSet(
-    uint256 indexed tokenId,
-    address indexed manufacturer,
-    string batteryModel,
-    string batteryType,
-    string productName
-);
+function viewBatteryDetails(uint256 tokenId)
+    external
+    view
+    onlyRole(CONSUMER_ROLE)
+    returns (
+        string memory batteryType,
+        string memory batteryModel,
+        string memory productName,
+        string memory manufacturingSite,
+        string memory supplyChainInfo,
+        bool isRecycled,
+        bool returnedToManufacturer
+    )
+{
+    BatteryData storage data = batteryData[tokenId];
 
-    /**
-     * @notice Views battery details after consent is given.
-     * @param tokenId The token ID of the battery.
-     * @return batteryType The type of the battery.
-     * @return batteryModel The model of the battery.
-     * @return productName The name of the product.
-     * @return manufacturingSite The manufacturing site of the battery.
-     */
-    function viewBatteryDetails(uint256 tokenId)
-        external
-        view
-        onlyRole(CONSUMER_ROLE)
-        returns (
-            string memory batteryType,
-            string memory batteryModel,
-            string memory productName,
-            string memory manufacturingSite
-        )
-    {
-        BatteryData storage data = batteryData[tokenId];
+    batteryType = data.technicalSpecifications.batteryType;
+    batteryModel = data.identification.batteryModel;
+    productName = data.productName;
+    manufacturingSite = data.identification.manufacturerLocation;
+    supplyChainInfo = data.supplyChainInfo;
+    isRecycled = data.isRecycled;
+    returnedToManufacturer = data.returnedToManufacturer;
+}
 
-        batteryType = data.technicalSpecifications.batteryType;
-        batteryModel = data.identification.batteryModel;
-        productName = data.productName;
-        manufacturingSite = data.identification.manufacturerLocation;
-    }
-
-    // Functions for removing roles (optional for testing)
-    /**
-     * @notice Removes a manufacturer from the system.
-     * @param manufacturer The address of the manufacturer.
-     */
-    function removeManufacturer(address manufacturer) external onlyGovernment {
-        revokeRole(MANUFACTURER_ROLE, manufacturer);
-    }
-
-    /**
-     * @dev See {IERC165-supportsInterface}.
-     */
+    // Override Functions
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, AccessControl) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 }
-
-
-// my name is roshan 
