@@ -20,5 +20,8 @@ networks:
     eth_gbp_price_feed: "0x0000000000000000000000000000000000000000"  # Update with actual price feed address when available
     verify: False
 
+filebase:
+  api_key: D2E36D112C666892F8D3
+
 
 #dotenv: .env  # Uncomment if you're using environment variables

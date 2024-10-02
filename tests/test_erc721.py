@@ -1,6 +1,7 @@
 import pytest
 from brownie import MockPriceFeed, EVBatteryPassportLite, accounts, exceptions, Wei
 from web3 import Web3
+import requests
 
 @pytest.fixture
 def government_account():
@@ -41,6 +42,7 @@ def test_erc721_functionality(ev_battery_passport, government_account, manufactu
 
     # Manufacturer sets battery data and mints token
     token_id = 1
+    off_chain_data_hash = "QmYdCcEPr8R8Cp8XdEB5CP1EANg91B7cSTQk3Su6ZNnZEq"  # Example IPFS hash
     print(f"Setting battery data for token {token_id}...")
     tx = ev_battery_passport.setBatteryData(
         token_id,
@@ -48,6 +50,7 @@ def test_erc721_functionality(ev_battery_passport, government_account, manufactu
         "Location B",
         "NiMH",
         "Hybrid Battery",
+        off_chain_data_hash,  # Added offChainDataHash argument
         {'from': manufacturer_account}
     )
     print(f"Battery data set for token {token_id} and token minted.")
@@ -88,7 +91,13 @@ def test_erc721_functionality(ev_battery_passport, government_account, manufactu
     ev_battery_passport.grantRole(ev_battery_passport.CONSUMER_ROLE(), consumer_account, {'from': government_account})
 
     # Ensure viewBatteryDetails function can be called
-    batteryType, batteryModel, productName, manufacturingSite, supplyChainInfo, isRecycled, returnedToManufacturer = ev_battery_passport.viewBatteryDetails(token_id, {'from': consumer_account})
+    batteryDetails = ev_battery_passport.viewBatteryDetails(token_id, {'from': consumer_account})
+
+    # Update this line to expect 8 return values
+    assert len(batteryDetails) == 8, "Expected 8 return values from viewBatteryDetails"
+
+    # Unpack all 8 return values
+    batteryType, batteryModel, productName, manufacturingSite, supplyChainInfo, isRecycled, returnedToManufacturer, offChainDataHash = batteryDetails
 
     assert batteryType == "NiMH"
     assert batteryModel == "Model Y"
@@ -106,6 +115,7 @@ def test_erc721_functionality(ev_battery_passport, government_account, manufactu
     print(f"Supply Chain Info: {supplyChainInfo}")
     print(f"Recycled: {'Yes' if isRecycled else 'No'}")
     print(f"Returned to Manufacturer: {'Yes' if returnedToManufacturer else 'No'}")
+    print(f"Off-Chain Data Hash: {offChainDataHash}")
 
     # Consumer transfers battery to recycler
     print(f"Transferring token {token_id} from consumer {consumer_account} to recycler {recycler_account}...")
@@ -128,7 +138,11 @@ def test_erc721_functionality(ev_battery_passport, government_account, manufactu
     ev_battery_passport.grantRole(ev_battery_passport.CONSUMER_ROLE(), recycler_account, {'from': government_account})
     
     # Now the recycler can view battery details
-    batteryType, batteryModel, productName, manufacturingSite, supplyChainInfo, isRecycled, returnedToManufacturer = ev_battery_passport.viewBatteryDetails(token_id, {'from': recycler_account})
+    batteryDetails = ev_battery_passport.viewBatteryDetails(token_id, {'from': recycler_account})
+    assert len(batteryDetails) == 8, "Expected 8 return values from viewBatteryDetails"
+
+    # Unpack all 8 return values
+    batteryType, batteryModel, productName, manufacturingSite, supplyChainInfo, isRecycled, returnedToManufacturer, offChainDataHash = batteryDetails
 
     assert batteryType == "NiMH"
     assert batteryModel == "Model Y"
@@ -140,7 +154,11 @@ def test_erc721_functionality(ev_battery_passport, government_account, manufactu
 
     # Additional check: Verify that the government account can also view the details
     print("Verifying government can view battery details...")
-    govBatteryType, _, _, _, _, govIsRecycled, _ = ev_battery_passport.viewBatteryDetails(token_id, {'from': government_account})
+    govBatteryDetails = ev_battery_passport.viewBatteryDetails(token_id, {'from': government_account})
+    assert len(govBatteryDetails) == 8, "Expected 8 return values from viewBatteryDetails"
+
+    # Unpack all 8 return values
+    govBatteryType, _, _, _, _, govIsRecycled, _, govOffChainDataHash = govBatteryDetails
     assert govBatteryType == "NiMH"
     assert govIsRecycled == True
     print("Government successfully viewed battery details.")
@@ -149,48 +167,124 @@ def test_erc721_functionality(ev_battery_passport, government_account, manufactu
     
     # Create a second token with different data
     token_id_2 = 2
-    ev_battery_passport.setBatteryData(
+    off_chain_data_hash_2 = "QmYdCcEPr8R8Cp8XdEB5CP1EANg91B7cSTQk3Su6ZNnZEq"  # Example IPFS hash for second token
+    print(f"Setting battery data for second token {token_id_2}...")
+    tx_2 = ev_battery_passport.setBatteryData(
         token_id_2,
         "Model X",
-        "Location C",
+        "Location A",
         "Li-ion",
-        "Electric Vehicle Battery",
+        "Electric Battery",
+        off_chain_data_hash_2,
         {'from': manufacturer_account}
     )
-    ev_battery_passport.transferFrom(manufacturer_account, supplier_account, token_id_2, {'from': manufacturer_account})
-    ev_battery_passport.updateSupplyChainInfo(token_id_2, "Shipped from Factory C to Distribution Center D", {'from': supplier_account})
-
-    # Final summary print statement
-    print("\n=== EV Battery Passport Summary ===")
+    print(f"Battery data set for token {token_id_2} and token minted.")
     
-    def get_owner_name(address):
-        if address == government_account:
-            return "Government"
-        elif address == manufacturer_account:
-            return "Manufacturer"
-        elif address == supplier_account:
-            return "Supplier"
-        elif address == recycler_account:
-            return "Recycler"
-        elif address == consumer_account:
-            return "Consumer"
-        else:
-            return "Unknown"
+    # Test minting
+    assert ev_battery_passport.ownerOf(token_id_2) == manufacturer_account
+    print(f"Token {token_id_2} is owned by {manufacturer_account}.")
+    
+    # The rest of the process (transfer, update supply chain info, etc.) can follow similarly for the second token.
+        # Supplier transfers battery to consumer for the second token
+    print(f"Transferring token {token_id_2} from manufacturer {manufacturer_account} to supplier {supplier_account}...")
+    ev_battery_passport.transferFrom(manufacturer_account, supplier_account, token_id_2, {'from': manufacturer_account})
+    assert ev_battery_passport.ownerOf(token_id_2) == supplier_account
+    print(f"Token {token_id_2} successfully transferred to supplier {supplier_account}.")
 
-    for token_id in [1, 2]:
-        batteryType, batteryModel, productName, manufacturingSite, supplyChainInfo, isRecycled, returnedToManufacturer = ev_battery_passport.viewBatteryDetails(token_id, {'from': government_account})
-        current_owner = ev_battery_passport.ownerOf(token_id)
-        owner_name = get_owner_name(current_owner)
-        
-        print(f"\nToken ID: {token_id}")
-        print(f"Battery Type: {batteryType}")
-        print(f"Battery Model: {batteryModel}")
-        print(f"Product Name: {productName}")
-        print(f"Manufacturing Site: {manufacturingSite}")
-        print(f"Supply Chain Info: {supplyChainInfo}")
-        print(f"Recycled: {'Yes' if isRecycled else 'No'}")
-        print(f"Returned to Manufacturer: {'Yes' if returnedToManufacturer else 'No'}")
-        print(f"Current Owner: {owner_name} ({current_owner})")
-        print("-------------------------------------")
+    # Supplier updates supply chain info for the second token
+    print("Updating supply chain info for token {token_id_2} by supplier...")
+    supply_chain_data_2 = "Shipped from Factory A to Distribution Center D"
+    tx_2 = ev_battery_passport.updateSupplyChainInfo(token_id_2, supply_chain_data_2, {'from': supplier_account})
 
-    print("=====================================")
+    # Verify SupplyChainInfoUpdated event for the second token
+    assert 'SupplyChainInfoUpdated' in tx_2.events
+    print(f"Supply chain info updated for token {token_id_2} by supplier {supplier_account}.")
+
+    # Supplier transfers battery to consumer for the second token
+    print(f"Transferring token {token_id_2} from supplier {supplier_account} to consumer {consumer_account}...")
+    ev_battery_passport.transferFrom(supplier_account, consumer_account, token_id_2, {'from': supplier_account})
+    assert ev_battery_passport.ownerOf(token_id_2) == consumer_account
+    print(f"Token {token_id_2} successfully transferred to consumer {consumer_account}.")
+
+    # Consumer views battery details for the second token
+    print("Granting consumer role and verifying battery details for token {token_id_2}...")
+    ev_battery_passport.grantRole(ev_battery_passport.CONSUMER_ROLE(), consumer_account, {'from': government_account})
+
+    # Ensure viewBatteryDetails function can be called for the second token
+    batteryDetails_2 = ev_battery_passport.viewBatteryDetails(token_id_2, {'from': consumer_account})
+
+    # Unpack all 8 return values for the second token
+    assert len(batteryDetails_2) == 8, "Expected 8 return values from viewBatteryDetails"
+    batteryType_2, batteryModel_2, productName_2, manufacturingSite_2, supplyChainInfo_2, isRecycled_2, returnedToManufacturer_2, offChainDataHash_2 = batteryDetails_2
+
+    assert batteryType_2 == "Li-ion"
+    assert batteryModel_2 == "Model X"
+    assert productName_2 == "Electric Battery"
+    assert manufacturingSite_2 == "Location A"
+    assert supplyChainInfo_2 == "Shipped from Factory A to Distribution Center D"
+    assert isRecycled_2 == False
+
+    # Print out values obtained from viewBatteryDetails for the second token
+    print("=== Second Battery Details ===")
+    print(f"Battery Type: {batteryType_2}")
+    print(f"Battery Model: {batteryModel_2}")
+    print(f"Product Name: {productName_2}")
+    print(f"Manufacturing Site: {manufacturingSite_2}")
+    print(f"Supply Chain Info: {supplyChainInfo_2}")
+    print(f"Recycled: {'Yes' if isRecycled_2 else 'No'}")
+    print(f"Returned to Manufacturer: {'Yes' if returnedToManufacturer_2 else 'No'}")
+    print(f"Off-Chain Data Hash: {offChainDataHash_2}")
+
+    # Consumer transfers the second battery to recycler
+    print(f"Transferring token {token_id_2} from consumer {consumer_account} to recycler {recycler_account}...")
+    ev_battery_passport.transferFrom(consumer_account, recycler_account, token_id_2, {'from': consumer_account})
+    assert ev_battery_passport.ownerOf(token_id_2) == recycler_account
+    print(f"Token {token_id_2} successfully transferred to recycler {recycler_account}.")
+
+    # Recycler marks the second battery as recycled
+    print("Granting recycler role and marking the second battery as recycled...")
+    ev_battery_passport.grantRole(ev_battery_passport.RECYCLER_ROLE(), recycler_account, {'from': government_account})
+    ev_battery_passport.markBatteryRecycled(token_id_2, {'from': recycler_account})
+
+    # Verify the second battery is marked as recycled
+    print("Verifying recycler can view battery details for the second token...")
+    
+    # Check if the recycler has the correct role
+    assert ev_battery_passport.hasRole(ev_battery_passport.RECYCLER_ROLE(), recycler_account), "Recycler doesn't have the RECYCLER_ROLE"
+
+    # Grant additional roles if necessary for the second token
+    ev_battery_passport.grantRole(ev_battery_passport.CONSUMER_ROLE(), recycler_account, {'from': government_account})
+    
+    # Now the recycler can view battery details for the second token
+    batteryDetails_2 = ev_battery_passport.viewBatteryDetails(token_id_2, {'from': recycler_account})
+    assert len(batteryDetails_2) == 8, "Expected 8 return values from viewBatteryDetails"
+
+    # Unpack all 8 return values for the second token
+    batteryType_2, batteryModel_2, productName_2, manufacturingSite_2, supplyChainInfo_2, isRecycled_2, returnedToManufacturer_2, offChainDataHash_2 = batteryDetails_2
+
+    assert batteryType_2 == "Li-ion"
+    assert batteryModel_2 == "Model X"
+    assert productName_2 == "Electric Battery"
+    assert manufacturingSite_2 == "Location A"
+    assert supplyChainInfo_2 == "Shipped from Factory A to Distribution Center D"
+    assert isRecycled_2 == True
+    print(f"Verified battery details for token {token_id_2} after marking as recycled.")
+
+    # Additional check: Verify that the government account can also view the details for the second token
+    print("Verifying government can view battery details for the second token...")
+    govBatteryDetails_2 = ev_battery_passport.viewBatteryDetails(token_id_2, {'from': government_account})
+    assert len(govBatteryDetails_2) == 8, "Expected 8 return values from viewBatteryDetails"
+
+    # Unpack all 8 return values for the second token
+    govBatteryType_2, _, _, _, _, govIsRecycled_2, _, govOffChainDataHash_2 = govBatteryDetails_2
+    assert govBatteryType_2 == "Li-ion"
+    assert govIsRecycled_2 == True
+    print("Government successfully viewed battery details for the second token.")
+
+    print("ERC721 functionality test for both tokens completed successfully.")
+
+
+
+
+
+

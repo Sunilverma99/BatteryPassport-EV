@@ -29,28 +29,33 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
     mapping(address => uint256) public manufacturerDeposits;
 
 
-    //Struct to store consent
+   // Struct to store consent
     struct Consent {
     mapping(address => bool) consentStatus; // Tracks consent for each address
     }
-    // Struct to store battery data
+
+    // Struct to store battery identification details
     struct Identification {
-        string batteryModel;
-        string manufacturerLocation;
+    string batteryModel;
+    string manufacturerLocation;
     }
 
+    // Struct to store technical specifications of the battery
     struct TechnicalSpecifications {
-        string batteryType;
+    string batteryType;
     }
 
+    // Struct to store battery data
     struct BatteryData {
-        Identification identification;
-        TechnicalSpecifications technicalSpecifications;
-        string productName;
-        string supplyChainInfo;
-        bool isRecycled;
-        bool returnedToManufacturer;
+    Identification identification;
+    TechnicalSpecifications technicalSpecifications;
+    string productName;
+    string supplyChainInfo;
+    bool isRecycled;
+    bool returnedToManufacturer;
+    string offChainDataHash;  // IPFS hash for storing off-chain data
     }
+
 
     // Mapping from tokenId to BatteryData
     mapping(uint256 => BatteryData) public batteryData;
@@ -240,16 +245,17 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
     }
 
     function setBatteryData(
-    uint256 tokenId, 
-    string memory batteryModel, 
-    string memory manufacturerLocation, 
-    string memory batteryType, 
-    string memory productName
-) external onlyRole(MANUFACTURER_ROLE) {
-    require(!_exists(tokenId), "ERC721: token already minted");
+        uint256 tokenId, 
+        string memory batteryModel, 
+        string memory manufacturerLocation, 
+        string memory batteryType, 
+        string memory productName, 
+        string memory offChainDataHash // New argument for off-chain data (IPFS hash)
+    ) external onlyRole(MANUFACTURER_ROLE) {
+        require(!_exists(tokenId), "ERC721: token already minted");
 
-    batteryData[tokenId] = BatteryData({
-        identification: Identification({
+        batteryData[tokenId] = BatteryData({
+            identification: Identification({
             batteryModel: batteryModel,
             manufacturerLocation: manufacturerLocation
         }),
@@ -257,9 +263,10 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
             batteryType: batteryType
         }),
         productName: productName,
-        supplyChainInfo: "",
-        isRecycled: false,
-        returnedToManufacturer: false
+        supplyChainInfo: "", // You can set this later when needed
+        isRecycled: false, // Default value for new battery
+        returnedToManufacturer: false, // Default value
+        offChainDataHash: offChainDataHash // Set the IPFS hash for off-chain data
     });
 
     _safeMint(msg.sender, tokenId);
@@ -267,38 +274,36 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
     emit BatteryDataSet(tokenId, msg.sender, batteryModel, batteryType, productName);
 }
 
-        function viewBatteryDetails(uint256 tokenId)
-            external
-            view
-            returns (
-                string memory batteryType,
-                string memory batteryModel,
-                string memory productName,
-                string memory manufacturingSite,
-                string memory supplyChainInfo,
-                bool isRecycled,
-                bool returnedToManufacturer
-            )
-        {
-            require(
-                hasRole(CONSUMER_ROLE, msg.sender) ||
-                hasRole(RECYCLER_ROLE, msg.sender) ||
-                hasRole(SUPPLIER_ROLE, msg.sender) ||
-                hasRole(DEFAULT_ADMIN_ROLE, msg.sender) ||
-                batteryConsent[tokenId].consentStatus[msg.sender],
-                "Caller does not have permission to view battery details"
-            );
 
-            BatteryData storage data = batteryData[tokenId];
+    function viewBatteryDetails(uint256 tokenId) 
+    external 
+    view 
+    returns (
+        string memory batteryType,
+        string memory batteryModel,
+        string memory productName,
+        string memory manufacturingSite,
+        string memory supplyChainInfo,
+        bool isRecycled,
+        bool returnedToManufacturer,
+        string memory offChainDataHash // Added for the off-chain data
+    ) 
+{
+    // Retrieve the BatteryData struct for the given tokenId
+    BatteryData memory data = batteryData[tokenId];
 
-            batteryType = data.technicalSpecifications.batteryType;
-            batteryModel = data.identification.batteryModel;
-            productName = data.productName;
-            manufacturingSite = data.identification.manufacturerLocation;
-            supplyChainInfo = data.supplyChainInfo;
-            isRecycled = data.isRecycled;
-            returnedToManufacturer = data.returnedToManufacturer;
-        }
+    // Return the relevant values
+    return (
+        data.technicalSpecifications.batteryType,     // batteryType
+        data.identification.batteryModel,              // batteryModel
+        data.productName,                              // productName
+        data.identification.manufacturerLocation,      // manufacturingSite
+        data.supplyChainInfo,                          // supplyChainInfo
+        data.isRecycled,                               // isRecycled
+        data.returnedToManufacturer,                   // returnedToManufacturer
+        data.offChainDataHash                          // offChainDataHash
+    );
+}
 
     // Override Functions
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, AccessControl) returns (bool) {
