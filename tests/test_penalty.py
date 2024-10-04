@@ -30,3 +30,4 @@ def test_government_penalize_manufacturer(ev_battery_passport, government_accoun
     ev_battery_passport.penalizeNonCompliance(manufacturer_account, penalty_amount, {"from": government_account})
     
     assert ev_battery_passport.manufacturerDeposits(manufacturer_account) == 1.5 * 10**18
+

@@ -1,0 +1,26 @@
+{
+    "durability": "8 years",
+    "performance": "Excellent",
+    "recycledContent": "10%",
+    "endOfLifeCollectionInfo": "Collected by Authorized Recycler",
+    "batteryHealth": "92%",
+    "ghgEmissions": "Low",
+    "declarationOfConformity": "UL 2580, ISO 9001",
+    "hazardousSubstances": "Contains lithium and cobalt",
+    "certifications": "ISO 14001, RoHS Compliant",
+    "dueDiligencePolicy": "Conflict-free minerals policy",
+    "chainOfCustody": [
+      "Manufacturer: LG Chem",
+      "Distributor: EV Batteries Inc.",
+      "Authorized Dealer: AutoNation"
+    ],
+    "warranty": "5 years",
+    "chargingCycles": "1000 cycles",
+    "weight": "320 kg",
+    "dimensions": {
+      "length": "800 mm",
+      "width": "500 mm",
+      "height": "300 mm"
+    }
+  }
+  

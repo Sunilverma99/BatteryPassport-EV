@@ -23,6 +23,17 @@ def consumer_account():
 def recycler_account():
     return accounts[4]
 
+def retrieve_off_chain_data(ipfs_hash):
+    """Function to retrieve data from IPFS using the IPFS hash."""
+    ipfs_gateway_url = f"https://ipfs.io/ipfs/{ipfs_hash}"  # IPFS gateway URL
+    try:
+        response = requests.get(ipfs_gateway_url)
+        response.raise_for_status()  # Raise exception for HTTP errors
+        return response.json()  # Assuming off-chain data is stored as JSON
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to retrieve IPFS data: {e}")
+        return None
+
 def test_erc721_functionality(ev_battery_passport, government_account, manufacturer_account, supplier_account, recycler_account, consumer_account):
     """Test ERC721 functionality from government to manufacturer, supplier, consumer, recycler, and back to manufacturer."""
 
@@ -42,7 +53,7 @@ def test_erc721_functionality(ev_battery_passport, government_account, manufactu
 
     # Manufacturer sets battery data and mints token
     token_id = 1
-    off_chain_data_hash = "QmYdCcEPr8R8Cp8XdEB5CP1EANg91B7cSTQk3Su6ZNnZEq"  # Example IPFS hash
+    off_chain_data_hash = "QmPoEfuyhqEY7YZAmMmEoGc5Kco59EQ8kBQHfv6Q5a4CwQ"  # Example IPFS hash
     print(f"Setting battery data for token {token_id}...")
     tx = ev_battery_passport.setBatteryData(
         token_id,
@@ -116,6 +127,14 @@ def test_erc721_functionality(ev_battery_passport, government_account, manufactu
     print(f"Recycled: {'Yes' if isRecycled else 'No'}")
     print(f"Returned to Manufacturer: {'Yes' if returnedToManufacturer else 'No'}")
     print(f"Off-Chain Data Hash: {offChainDataHash}")
+    
+    # Fetch and print off-chain data from IPFS 
+    off_chain_data = retrieve_off_chain_data(offChainDataHash)
+    if off_chain_data:
+        print("=== Off-Chain Data for token 1 (from IPFS) ===")
+        print(off_chain_data)
+    else:
+        print("Failed to retrieve off-chain data.")
 
     # Consumer transfers battery to recycler
     print(f"Transferring token {token_id} from consumer {consumer_account} to recycler {recycler_account}...")
@@ -167,7 +186,7 @@ def test_erc721_functionality(ev_battery_passport, government_account, manufactu
     
     # Create a second token with different data
     token_id_2 = 2
-    off_chain_data_hash_2 = "QmYdCcEPr8R8Cp8XdEB5CP1EANg91B7cSTQk3Su6ZNnZEq"  # Example IPFS hash for second token
+    off_chain_data_hash_2 = "QmPoEfuyhqEY7YZAmMmEoGc5Kco59EQ8kBQHfv6Q5a4CwQ"  # Example IPFS hash for second token
     print(f"Setting battery data for second token {token_id_2}...")
     tx_2 = ev_battery_passport.setBatteryData(
         token_id_2,
@@ -234,6 +253,14 @@ def test_erc721_functionality(ev_battery_passport, government_account, manufactu
     print(f"Recycled: {'Yes' if isRecycled_2 else 'No'}")
     print(f"Returned to Manufacturer: {'Yes' if returnedToManufacturer_2 else 'No'}")
     print(f"Off-Chain Data Hash: {offChainDataHash_2}")
+    
+    # Fetch and print off-chain data from IPFS    
+    off_chain_data = retrieve_off_chain_data(offChainDataHash_2)
+    if off_chain_data:
+        print("=== Off-Chain Data for token 2  (from IPFS) ===")
+        print(off_chain_data)
+    else:
+        print("Failed to retrieve off-chain data.")
 
     # Consumer transfers the second battery to recycler
     print(f"Transferring token {token_id_2} from consumer {consumer_account} to recycler {recycler_account}...")
@@ -282,7 +309,7 @@ def test_erc721_functionality(ev_battery_passport, government_account, manufactu
     print("Government successfully viewed battery details for the second token.")
 
     print("ERC721 functionality test for both tokens completed successfully.")
-
+    
 
 
 
