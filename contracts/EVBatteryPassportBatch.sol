@@ -11,7 +11,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
  * @title EVBatteryPassportLite
  * @dev A simplified version of EVBatteryPassport to test roles and deposits.
  */
-contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
+contract EVBatteryPassportBatch is ERC721, AccessControl, ReentrancyGuard {
     // Role definitions using AccessControl
     bytes32 public constant GOVERNMENT_ROLE = DEFAULT_ADMIN_ROLE;
     bytes32 public constant MANUFACTURER_ROLE = keccak256("MANUFACTURER_ROLE");
@@ -170,7 +170,6 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
         emit ManufacturerAdded(manufacturer, block.timestamp);
     }
 
-
     function removeManufacturer(address manufacturer) external onlyGovernment {
         revokeRole(MANUFACTURER_ROLE, manufacturer);
     }
@@ -250,19 +249,19 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
 
     // Register Battery Model 
     function registerBatteryModel(string memory batteryModel, uint256 tokenId) internal {
-        modelToTokenIds[batteryModel].push(tokenId);    
+    modelToTokenIds[batteryModel].push(tokenId);    
     }
 
     // Use mintBatteryBatch instead for efficiency
     function mintBatteryBatch(
-        uint256[] memory tokenIds,
-        string[] memory batteryModels,
-        string[] memory manufacturerLocations,
-        string[] memory batteryTypes,
-        string[] memory productNames,
-        string[] memory offChainDataHashes
-    ) external onlyRole(MANUFACTURER_ROLE) {
-        require(tokenIds.length == batteryModels.length &&
+    uint256[] memory tokenIds,
+    string[] memory batteryModels,
+    string[] memory manufacturerLocations,
+    string[] memory batteryTypes,
+    string[] memory productNames,
+    string[] memory offChainDataHashes
+) external onlyRole(MANUFACTURER_ROLE) {
+    require(tokenIds.length == batteryModels.length &&
             tokenIds.length == manufacturerLocations.length &&
             tokenIds.length == batteryTypes.length &&
             tokenIds.length == productNames.length &&
@@ -289,7 +288,6 @@ contract EVBatteryPassportLite is ERC721, AccessControl, ReentrancyGuard {
         emit BatteryDataSet(tokenIds[i], msg.sender, batteryModels[i], batteryTypes[i], productNames[i]);
     }
 }
-
     function setBatteryData(
         uint256 tokenId, 
         string memory batteryModel, 
