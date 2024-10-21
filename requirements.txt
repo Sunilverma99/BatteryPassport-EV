@@ -6,4 +6,4 @@ web3
 ipfshttpclient
 black
 flake8
-mypy
+

@@ -4,3 +4,11 @@ __pycache__
 .hypothesis/
 build/
 reports/
+package-lock.json
+node_modules/
+dist/
+coverage/
+*.log
+*.log.*
+package.json
+requirements.txt
