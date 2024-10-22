@@ -26,20 +26,7 @@ export default function Component() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-black/30 backdrop-blur-lg border-b border-gray-500/20">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="text-2xl flex gap-3 font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
-            <img className='w-8 h-6' src="Logo.png" alt="" />
-            <img className='w-full h-6' src="LogoName.png" alt="" />
-          </div>
-          <button className="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full hover:from-blue-600 hover:to-purple-700 transition duration-300 flex items-center space-x-2 shadow-lg hover:shadow-blue-500/25">
-            <Wallet className="h-5 w-5" />
-            <span>Connect Wallet</span>
-          </button>
-        </div>
-      </header>
-
+     
       {/* Hero Section */}
       <section className="py-20">
         <div className="container mx-auto px-4">
@@ -132,11 +119,7 @@ export default function Component() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-black/70 py-6 border-t border-gray-500/20">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-sm text-gray-400">© 2024 Battery Passport. All Rights Reserved.</p>
-        </div>
-      </footer>
+      
     </div>
   )
 }
