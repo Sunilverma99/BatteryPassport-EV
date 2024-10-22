@@ -1,8 +1,9 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from './pages/Home'
-import Header from './components/Header'
-import Footer from './components/Footer'
+import Header from './pages/Header'
+import Footer from './pages/Footer'
+import BatteryPassport from './components/BatteryPassPort'
 
 
 export default function App() {
@@ -12,6 +13,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/battery-passport/:id" element={<BatteryPassport />} />
         </Routes>
       </BrowserRouter>
       <Footer />

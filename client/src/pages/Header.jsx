@@ -32,8 +32,8 @@ function Header() {
       <header className="sticky top-0 z-50 bg-black/30 backdrop-blur-lg border-b border-gray-500/20">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="text-2xl flex gap-3 font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
-            <img className='w-8 h-6' src="Logo.png" alt="Logo" />
-            <img className='w-full h-6' src="LogoName.png" alt="LogoName" />
+            <img className='w-8 h-6' src="/Logo.png" alt="Logo" />
+            <img className='w-full h-6' src="/LogoName.png" alt="LogoName" />
           </div>
           <button
             onClick={connectWallet}
